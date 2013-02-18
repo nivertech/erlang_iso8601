@@ -2,7 +2,10 @@
 
 -export([add_time/4,
          format/1,
-         parse/1]).
+         parse/1,
+         from_unixtime/1,
+         to_unixtime/1,
+         test_unixtime/0]).
 
 -export_types([datetime/0,
                timestamp/0]).
@@ -42,6 +45,16 @@ parse(Bin) when is_binary(Bin) ->
     parse(binary_to_list(Bin));
 parse(Str) ->
     year(Str, []).
+
+-spec from_unixtime (integer()) -> binary().
+from_unixtime(Unixtime) ->
+    format(calendar:gregorian_seconds_to_datetime(
+        unixtime_to_gregorian_seconds(Unixtime))).
+
+-spec to_unixtime (string()) -> integer().
+to_unixtime(Str) ->
+    gregorian_seconds_to_unixtime(
+        calendar:datetime_to_gregorian_seconds(parse(Str))).
 
 %% Private functions
 
@@ -257,3 +270,25 @@ apply_offset(Datetime, H, M, S) ->
     OffsetS = S + (60 * (M + (60 * H))),
     Gs = round(OffsetS) + calendar:datetime_to_gregorian_seconds(Datetime),
     calendar:gregorian_seconds_to_datetime(Gs).
+
+-define(GREGORIAN_SECONDS_TO_UNIXTIME_DIFF, (719528*24*3600)).
+
+gregorian_seconds_to_unixtime(GSec) -> GSec - ?GREGORIAN_SECONDS_TO_UNIXTIME_DIFF.
+unixtime_to_gregorian_seconds(USec) -> USec + ?GREGORIAN_SECONDS_TO_UNIXTIME_DIFF.
+
+test_unixtime() ->
+    lists:foreach(
+        fun(X) -> X = from_unixtime(to_unixtime(X)) end,
+        [<<"0000-01-01T00:00:00Z">>, % lo
+         <<"9999-12-31T23:59:59Z">>, % hi
+         <<"1970-01-01T00:00:00Z">>, % unixtime(0), ref: http://en.wikipedia.org/wiki/Unixtime#Encoding_time_as_a_number
+         <<"2016-02-29T00:00:00Z">>  % leap year, ref: http://en.wikipedia.org/wiki/Leap_year
+         % FIXME: doesn't seem to handle leap seconds
+         %<<"2012-06-30T23:59:60Z">>  % leap second, ref: http://en.wikipedia.org/wiki/Leap_second
+        ]),
+    lists:foreach(
+        fun(X) -> X = to_unixtime(from_unixtime(X)) end,
+        [-62167219200, % 0000-01-01T00:00:00Z
+          0,           % unix epoch
+          253400745599 % 9999-12-31T12:31:59Z
+        ]).
