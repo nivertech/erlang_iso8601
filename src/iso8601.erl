@@ -51,10 +51,10 @@ from_unixtime(Unixtime) ->
     format(calendar:gregorian_seconds_to_datetime(
         unixtime_to_gregorian_seconds(Unixtime))).
 
--spec to_unixtime (string()) -> integer().
-to_unixtime(Str) ->
+-spec to_unixtime (string() | datetime()) -> integer().
+to_unixtime(Datetime={_,_}) ->
     gregorian_seconds_to_unixtime(
-        calendar:datetime_to_gregorian_seconds(parse(Str))).
+        calendar:datetime_to_gregorian_seconds(Datetime)).
 
 %% Private functions
 
